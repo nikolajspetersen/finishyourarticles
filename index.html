@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Reads To be Done</title>
+<script src="//code.jquery.com/jquery-1.12.0.min.js"></script>
+<script type="text/javascript">
+
+    
+//Declaring variables for future use
+var stopSpritz = null;
+var startSpritz = null;
+var ms_per_word = 60000/250;
+var switchcol = false; 
+var geturl = null;
+var seconds = 0; 
+var trimmedtext = "";
+var finaltext = "";
+var data = null;
+//var running = false;
+
+
+
+
+    //Here starts the document ready function.
+$("document").ready(function(){
+
+
+
+  // function pushArticle() {
+
+
+  // }
+
+    //Parses, cleans and pushed the input into the finaltext 
+  geturl = function() {
+    var url = $("#urlinput").val();
+
+    //This assigns the API request. 
+    var apireq =  "https://readability.com/api/content/v1/parser?token=0056e6434bc6e3ab06326678b3500e673ddace65&url=" + url + "&callback=?";
+
+    //This function sends the request and gets back a JSON called ""
+    $.getJSON(apireq, function (data) {
+
+      //This goes into the the content parameter and assigns it to 
+      var rawcontent = data.content;  
+
+      $("#imgLeadImage").attr('src', data.lead_image_url);
+      //Removes all redundant spaces 
+      var firsttrim = $.trim($(rawcontent).text());
+
+      //and cleans it up a bit more
+      trimmedtext = firsttrim.replace(/\s{2,}/g, ' ');
+
+      // console.log(wordcount);
+      // console.log(pwpm);
+      // console.log(readtime);
+      var arttitle = data.title; // 
+      console.log(arttitle);
+      // console.log(data.domain);
+      // console.log(meta);
+      finaltext = finaltext.concat(arttitle + trimmedtext);
+      console.log(finaltext);
+
+      input1 = document.getElementById('urlinput');
+      input1.value = "";
+
+      //clearing the input box
+      // $("#urlinput").value = ""; 
+ 
+    });
+
+  }
+
+   calc = function() {  
+    $('#header').css({ visibility: "hidden"});
+    $("#textcontainer").html("Click here to start");
+    calculateTime(finaltext);
+    speedread(finaltext);
+  }
+ 
+
+
+  console.log(urlinput);
+
+
+  function calculateTime(fulltext) {
+
+    navigator.getBattery().then(function(battery) {
+    seconds = battery.dischargingTime;
+    
+    console.log(battery.level * 100 + '%');
+    console.log(battery.dischargingTime);
+    
+    textarray = fulltext.split(' ');
+
+      if(seconds == "Infinity") {
+      $('#selector').css({ visibility: "visible"});
+      var pwpm = parseInt(document.getElementById("selector").value, 10);
+      console.log(pwpm);
+      ms_per_word = 60000/pwpm;
+      stopSpritz();
+     } else {    
+      wordcount = textarray.length;
+      ms_per_word = (seconds * 1000) / wordcount;
+
+      var secprword = Math.ceil((ms_per_word) / 1000);
+      var speedmsg = "Speed: " + secprword + " seconds pr. word";
+
+      console.log(speedmsg);
+     } 
+  });
+}
+
+  function speedread(input){ 
+        // var wpm = parseInt(document.getElementById("selector").value, 10);
+        // var ms_per_word = 60000/300;
+        // // // var ms_per_word = 40000/wpm + 20000;
+        // console.log(wpm);
+        // // // console.log("2 : " + ms_per_word);
+
+      // Split on any spaces.
+        var all_words = input.split(' ');
+
+      // The reader won't stop if the selection starts or ends with spaces
+        if (all_words[0] == " "){
+            all_words = all_words.slice(1, all_words.length);
+        }
+
+        if (all_words[all_words.length - 1] == " "){
+            all_words = all_words.slice(0, all_words.length - 1);
+        }
+
+     // Preprocess words
+        var temp_words = all_words.slice(0); // copy Array
+        var t = 0;
+
+        for (var i=0; i<all_words.length; i++){
+
+          // if(all_words[i].indexOf('.') != -1){
+          //     temp_words[t] = all_words[i].replace('.', '&#8226;');
+          // }
+
+        // Double up on long words and words with commas.
+        if((all_words[i].indexOf(',') != -1 || all_words[i].indexOf(':') != -1 || all_words[i].indexOf('-') != -1 || all_words[i].indexOf('(') != -1|| all_words[i].length > 8) && all_words[i].indexOf('.') == -1){
+          temp_words.splice(t+1, 0, all_words[i]);
+          temp_words.splice(t+1, 0, all_words[i]);
+          t++;
+          t++;
+          }
+
+         // Add an additional space after punctuation.
+        if(all_words[i].indexOf('.') != -1 || all_words[i].indexOf('!') != -1 || all_words[i].indexOf('?') != -1 || all_words[i].indexOf(':') != -1 || all_words[i].indexOf(';') != -1|| all_words[i].indexOf(')') != -1){
+          temp_words.splice(t+1, 0, " ");
+          temp_words.splice(t+1, 0, " ");
+          temp_words.splice(t+1, 0, " ");
+          t++;
+          t++;
+          t++;
+          }
+        t++;
+        }
+
+      all_words = temp_words.slice(0);
+
+      var currentWord = 0;
+      var running = false;
+      var spritz_timers = new Array();
+
+      document.getElementById("readswitch").addEventListener("click", function() {
+
+        console.log(running);
+        //speedread(resultt);
+
+          if(!running) {
+              startSpritz();
+              running = true;
+          } else {
+              stopSpritz();
+              running = false;
+          }
+      });
+
+      function updateValues(i) {
+        $("#textcontainer").html(all_words[i]);
+        currentWord = i;
+      }
+
+      startSpritz = function() {
+          console.log("startSpritz" + ms_per_word);
+          //running = true;
+          spritz_timers.push(setInterval(function() {
+              updateValues(currentWord);
+              currentWord++;
+
+              if(currentWord >= all_words.length) {
+                  currentWord = 0;
+                  stopSpritz();
+              }
+          }, ms_per_word));
+      }
+
+      stopSpritz = function() {
+          console.log("stopSpritz");
+
+          for(var i = 0; i < spritz_timers.length; i++) {
+              clearTimeout(spritz_timers[i]);
+          }
+
+          $("readswitch").textContent = "Play";
+          //running = false;
+      }
+    }
+});
+
+
+
+
+</script>
+
+<style>
+
+    .pictures img {
+      
+      width:100%;
+      height:80%;
+      position: relative;
+      top: 190px; 
+        
+    }
+
+    .archiveimg img { 
+
+        width: 100px;
+        height: auto;
+       
+
+    }
+
+    #textcontainer { 
+
+       position: fixed; 
+       text-align: center;
+       top: 125px; 
+       left: 0px; 
+       width: 100%; 
+       color: black;
+       border-style:none;
+    }
+
+
+    #textcontainer1 { 
+
+       position: fixed; 
+       text-align: center;
+       top: 125px; 
+       left: 0px; 
+       width: 100%; 
+       color: black;
+       border-style:none;
+    }
+
+    #metadata {
+
+       position: fixed; 
+       text-align: center;
+       top: 200px; 
+       font-size: 10pt;
+        color: black;
+        width: 100%;
+
+    }
+
+
+    #minute {
+
+       position: fixed; 
+       text-align: center;
+       top: 487px; 
+       font-size: 13pt;
+        color: black;
+        width: 100%;
+
+    }
+
+    .headerimg {
+
+    position: fixed;
+    top: 80px;
+    margin-left: 57px;
+    margin-right: auto; 
+    }
+
+     .ui-content {
+        position: relative;
+        top: 200px;
+        text-align: center;
+    }
+
+   
+
+    .ui-content1 {
+        position: relative;
+        top: 220px;
+        text-align: center;
+    }
+
+    .myButton {
+  -moz-box-shadow:inset 0px 1px 0px 0px #ffffff;
+  -webkit-box-shadow:inset 0px 1px 0px 0px #ffffff;
+  box-shadow:inset 0px 1px 0px 0px #ffffff;
+  background:-webkit-gradient(linear, left top, left bottom, color-stop(0.05, #f9f9f9), color-stop(1, #e9e9e9));
+  background:-moz-linear-gradient(top, #f9f9f9 5%, #e9e9e9 100%);
+  background:-webkit-linear-gradient(top, #f9f9f9 5%, #e9e9e9 100%);
+  background:-o-linear-gradient(top, #f9f9f9 5%, #e9e9e9 100%);
+  background:-ms-linear-gradient(top, #f9f9f9 5%, #e9e9e9 100%);
+  background:linear-gradient(to bottom, #f9f9f9 5%, #e9e9e9 100%);
+  filter:progid:DXImageTransform.Microsoft.gradient(startColorstr='#f9f9f9', endColorstr='#e9e9e9',GradientType=0);
+  background-color:#f9f9f9;
+  -moz-border-radius:6px;
+  -webkit-border-radius:6px;
+  border-radius:6px;
+  border:1px solid #dcdcdc;
+  display:inline-block;
+  cursor:pointer;
+  color:#666666;
+  font-family:Arial;
+  font-size:15px;
+  font-weight:bold;
+  padding:6px 24px;
+  text-decoration:none;
+  text-shadow:0px 1px 0px #ffffff;
+}
+.myButton:hover {
+  background:-webkit-gradient(linear, left top, left bottom, color-stop(0.05, #e9e9e9), color-stop(1, #f9f9f9));
+  background:-moz-linear-gradient(top, #e9e9e9 5%, #f9f9f9 100%);
+  background:-webkit-linear-gradient(top, #e9e9e9 5%, #f9f9f9 100%);
+  background:-o-linear-gradient(top, #e9e9e9 5%, #f9f9f9 100%);
+  background:-ms-linear-gradient(top, #e9e9e9 5%, #f9f9f9 100%);
+  background:linear-gradient(to bottom, #e9e9e9 5%, #f9f9f9 100%);
+  filter:progid:DXImageTransform.Microsoft.gradient(startColorstr='#e9e9e9', endColorstr='#f9f9f9',GradientType=0);
+  background-color:#e9e9e9;
+}
+.myButton:active {
+  position:relative;
+  top:1px;
+}
+
+input {
+
+height:20px;
+width:300px;
+}
+
+h1 {
+top: 200px;
+font-family:Courier New;
+font-size:50px;
+text-align: center;
+
+}
+
+#imgLeadImage {
+    height: auto; 
+    width: auto; 
+    max-width: 200px; 
+    max-height: 200px;
+    top: 240px;
+
+}
+
+.selector {
+  top:800;
+}
+
+
+</style>
+</head>
+
+
+
+<body>
+<div data-role="page" id ="page1">
+<h1 id = "header" > Finish your articles before the battery runs out! </h1>
+    <div class = "ui-content"> 
+        <input id="urlinput" data-clear-btn="true"  placeholder = "Submit article's URL" > </input> 
+        <button class="myButton" onclick="geturl()">SUBMIT</button>
+    </div>
+    
+    <div class= "ui-content1">
+    <button class="myButton" onclick="calc()">Start reading</button>
+  </div>   
+</div>
+
+<div> 
+    <select class = "selector" id="selector" onchange="calculateTime()" style = "visibility: hidden">
+        <option value="250">Select WPM</option>
+        <option value="200">200wpm</option>
+        <option value="300">300wpm</option>
+        <option value="350">350wpm</option>
+        <option value="400">400wpm</option>
+        <option value="450">450wpm</option>
+        <option value="500">500wpm</option>
+        <option value="550">550wpm</option>
+        <option value="600">600wpm</option>
+        <option value="650">650wpm</option>
+        <option value="700">700wpm</option>
+        <option value="750">750wpm</option>
+        <option value="800">800wpm</option>
+        <option value="850">850wpm</option>
+        <option value="900">900wpm</option>
+        <option value="950">950wpm</option>
+    </select>
+
+    <div id="readswitch" class = "pictures">
+
+        
+    <!-- This is the reading text -->
+    <div id = "textcontainer" style = "font-size: 80pt" style = "border-style:none" class = "ui-widget-content" > 
+    </div>
+
+
+    <img id = "imgLeadImage" ></img>
+
+  </div>
+    
+
+
+
+
+</body>
+</html>
+  
